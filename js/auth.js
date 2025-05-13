@@ -1,7 +1,51 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const loginForm = document.getElementById('loginForm');
-  const registerForm = document.getElementById('registerForm');
+  // Kiểm tra đăng nhập
+  function checkLoginStatus() {
+    const isLoggedIn = localStorage.getItem('isLoggedIn');
+    const isAdmin = localStorage.getItem('isAdmin');
+    
+    // Chuyển hướng nếu cần
+    if (window.location.pathname.includes('admin-dashboard.html') && (!isLoggedIn || isAdmin !== 'true')) {
+      window.location.href = 'login.html';
+      return;
+    }
+    
+    // Cập nhật UI dựa trên trạng thái đăng nhập
+    updateUI(isLoggedIn === 'true', isAdmin === 'true');
+  }
   
+  // Cập nhật giao diện dựa trên trạng thái đăng nhập
+  function updateUI(isLoggedIn, isAdmin) {
+    const loginLink = document.getElementById('loginLink');
+    const registerLink = document.getElementById('registerLink');
+    const logoutLink = document.getElementById('logoutLink');
+    const adminDashboardLink = document.getElementById('adminDashboardLink');
+    
+    if (loginLink) {
+      if (isLoggedIn) {
+        loginLink.textContent = 'Tài khoản';
+        loginLink.href = isAdmin ? 'admin-dashboard.html' : 'user-account.html';
+      } else {
+        loginLink.textContent = 'Đăng nhập';
+        loginLink.href = 'login.html';
+      }
+    }
+    
+    if (registerLink) {
+      registerLink.style.display = isLoggedIn ? 'none' : 'block';
+    }
+    
+    if (logoutLink) {
+      logoutLink.style.display = isLoggedIn ? 'block' : 'none';
+    }
+    
+    if (adminDashboardLink) {
+      adminDashboardLink.style.display = (isLoggedIn && isAdmin) ? 'block' : 'none';
+    }
+  }
+  
+  // Xử lý form đăng nhập
+  const loginForm = document.getElementById('loginForm');
   if (loginForm) {
     loginForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -9,40 +53,36 @@ document.addEventListener('DOMContentLoaded', () => {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
       
-      // Trong ứng dụng thực tế, bạn sẽ gọi API đến máy chủ của bạn
-      // Đối với ví dụ này, chúng ta sẽ mô phỏng xác thực bằng localStorage
+      // Lấy danh sách người dùng từ localStorage
+      const users = JSON.parse(localStorage.getItem('users')) || [];
       
-      // Ví dụ người dùng (trong ứng dụng thực, dữ liệu này sẽ đến từ cơ sở dữ liệu)
-      const users = JSON.parse(localStorage.getItem('users')) || [
-        { email: 'admin@example.com', password: 'admin123', name: 'Người quản trị', isAdmin: true },
-        { email: 'user@example.com', password: 'user123', name: 'Người dùng thường', isAdmin: false }
-      ];
-      
+      // Kiểm tra thông tin đăng nhập
       const user = users.find(u => u.email === email && u.password === password);
       
       if (user) {
-        // Lưu thông tin người dùng vào localStorage
+        // Lưu thông tin đăng nhập
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('isAdmin', user.isAdmin.toString());
         localStorage.setItem('currentUser', JSON.stringify({
           email: user.email,
           name: user.name,
           isAdmin: user.isAdmin
         }));
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('isAdmin', user.isAdmin);
         
-        // Hiện thông báo thành công
-        alert('Đăng nhập thành công!');
-        
-        // Chuyển hướng dựa trên vai trò người dùng hoặc trang trước đó
-        const redirectUrl = sessionStorage.getItem('redirectAfterLogin') || (user.isAdmin ? '/admin-dashboard.html' : '/');
-        sessionStorage.removeItem('redirectAfterLogin'); // Xóa URL chuyển hướng
-        window.location.href = redirectUrl;
+        // Chuyển hướng người dùng
+        if (user.isAdmin) {
+          window.location.href = 'admin-dashboard.html';
+        } else {
+          window.location.href = 'index.html';
+        }
       } else {
-        alert('Email hoặc mật khẩu không đúng');
+        alert('Email hoặc mật khẩu không đúng!');
       }
     });
   }
   
+  // Xử lý form đăng ký
+  const registerForm = document.getElementById('registerForm');
   if (registerForm) {
     registerForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -50,44 +90,48 @@ document.addEventListener('DOMContentLoaded', () => {
       const name = document.getElementById('name').value;
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      const confirmPassword = document.getElementById('confirmPassword').value;
       
-      if (password !== confirmPassword) {
-        alert('Mật khẩu xác nhận không khớp');
-        return;
-      }
-      
-      // Trong ứng dụng thực tế, bạn sẽ gọi API đến máy chủ của bạn
-      // Đối với ví dụ này, chúng ta sẽ mô phỏng đăng ký bằng localStorage
-      
+      // Lấy danh sách người dùng từ localStorage
       let users = JSON.parse(localStorage.getItem('users')) || [];
       
-      // Kiểm tra xem người dùng đã tồn tại chưa
-      const existingUser = users.find(u => u.email === email);
-      
-      if (existingUser) {
-        alert('Người dùng với email này đã tồn tại');
+      // Kiểm tra email đã tồn tại chưa
+      if (users.some(u => u.email === email)) {
+        alert('Email đã được sử dụng!');
         return;
       }
       
       // Thêm người dùng mới
       users.push({
-        name,
         email,
         password,
+        name,
         isAdmin: false
       });
       
+      // Lưu danh sách người dùng
       localStorage.setItem('users', JSON.stringify(users));
       
       alert('Đăng ký thành công! Vui lòng đăng nhập.');
-      window.location.href = '/login.html';
+      window.location.href = 'login.html';
     });
   }
   
-  // Kiểm tra nếu người dùng đã đăng nhập, chuyển hướng khỏi trang đăng nhập/đăng ký
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  if (isLoggedIn && (window.location.pathname === '/login.html' || window.location.pathname === '/register.html')) {
-    window.location.href = '/';
+  // Xử lý đăng xuất
+  const logoutLink = document.getElementById('logoutLink');
+  if (logoutLink) {
+    logoutLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      
+      // Xóa thông tin đăng nhập
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('isAdmin');
+      localStorage.removeItem('currentUser');
+      
+      // Chuyển hướng về trang chủ
+      window.location.href = 'index.html';
+    });
   }
+  
+  // Kiểm tra trạng thái đăng nhập khi tải trang
+  checkLoginStatus();
 });
